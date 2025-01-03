@@ -2,9 +2,8 @@ import string
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.linear_model import RidgeClassifier, SGDClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import ConfusionMatrixDisplay
 
@@ -183,14 +182,6 @@ esn = ESN(n_inputs=28 * 28,
           alpha=1e-6,
           leaking_rate=leaking_rate)
 
-# # Train ESN
-# esn.fit(X_train, y_train, washout=0)
-
-# # Predict and evaluate
-# predictions = esn.predict(X_test)
-# accuracy = accuracy_score(y_test, predictions)
-# print(f"Test Accuracy: {accuracy:.3f}")
-
 accuracy_list = []
 loss_list = []
 
@@ -213,11 +204,12 @@ plt.show()
 predictions = esn.predict(X_test)
 num_to_char = dict(enumerate(string.ascii_uppercase))
 target_names = [num_to_char[i] for i in all_classes]
-fig, ax = plt.subplots(figsize=(10, 5))
+fig, ax = plt.subplots()
 ConfusionMatrixDisplay.from_predictions(y_test, predictions, ax=ax)
 ax.xaxis.set_ticklabels(target_names)
 ax.yaxis.set_ticklabels(target_names)
 _ = ax.set_title("Confusion Matrix")
+plt.show()
 
 # fig, axes = plt.subplots(2, 5, figsize=(10, 5))
 # for i in range(10):
@@ -226,4 +218,3 @@ _ = ax.set_title("Confusion Matrix")
 #     ax.set_title(f"Predicted: {predictions[i]}, True: {y_test[i]}")
 # plt.tight_layout()
 # plt.show()
-
