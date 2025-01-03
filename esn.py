@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.linear_model import RidgeClassifier
-from sklearn.metrics import accuracy_score
+import seaborn as sns
+from sklearn.linear_model import RidgeClassifier, SGDClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
 
 
@@ -32,6 +33,8 @@ class ESN:
         self.noise = noise
         self.alpha = alpha
         self.leaking_rate = leaking_rate
+
+        self.clf = SGDClassifier(alpha=self.alpha, loss='log_loss', fit_intercept=False)
 
         # Set random seed
         if random_state:
@@ -68,6 +71,25 @@ class ESN:
             pre_activation + self.noise * np.random.randn(self.n_reservoir))
         return updated_state
 
+    def _compute_state_matrix(self, inputs):
+        """
+        Compute the reservoir state matrix.
+
+        Parameters:
+        - inputs: Input sequence (time_steps x n_inputs).
+
+        Returns:
+        - Reservoir state matrix (time_steps x n_reservoir).
+        """
+        states = np.zeros((inputs.shape[0], self.n_reservoir))
+        state = np.zeros(self.n_reservoir)
+
+        for t in range(inputs.shape[0]):
+            state = self._update(state, inputs[t])
+            states[t] = state
+
+        return states
+
     def fit(self, inputs, labels, washout=100):
         """
         Train the ESN.
@@ -77,13 +99,8 @@ class ESN:
         - labels: Desired output sequence (time_steps x n_outputs).
         - washout: Number of initial states to discard.
         """
-        states = np.zeros((inputs.shape[0], self.n_reservoir))
-        state = np.zeros(self.n_reservoir)
-
-        # Collect reservoir states
-        for t in range(inputs.shape[0]):
-            state = self._update(state, inputs[t])
-            states[t] = state
+        # Compute reservoir states
+        states = self._compute_state_matrix(inputs)
 
         # Discard washout
         states_washout = states[washout:]
@@ -93,6 +110,12 @@ class ESN:
         clf = RidgeClassifier(alpha=self.alpha, fit_intercept=False)
         clf.fit(states_washout, labels_washout.ravel())
         self.W_out = clf
+
+    def sgd_fit(self, inputs, labels, classes):
+        states = self._compute_state_matrix(inputs)
+
+        self.clf.partial_fit(states, labels.ravel(), classes=classes)
+        self.W_out = self.clf
 
     def predict(self, inputs, initial_state=None):
         """
@@ -131,9 +154,18 @@ def load_csv(csv_path):
     return X, y
 
 
+def get_minibatches(X, y, batch_size):
+    for i in range(0, X.shape[0], batch_size):
+        yield X[i:i+batch_size], y[i:i+batch_size]
+
+
 # Read gesture data
 X, y = load_csv('American_Sign_Language_Recognition.csv')
 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=42)
+
+epochs = 100
+batch_size = 100
+all_classes = np.unique(y_test)
 
 leaking_rate = 1.0
 sparsity = 0.5
@@ -149,13 +181,42 @@ esn = ESN(n_inputs=28 * 28,
           alpha=1e-6,
           leaking_rate=leaking_rate)
 
-# Train ESN
-esn.fit(X_train, y_train, washout=0)
+# # Train ESN
+# esn.fit(X_train, y_train, washout=0)
 
-# Predict and evaluate
+# # Predict and evaluate
+# predictions = esn.predict(X_test)
+# accuracy = accuracy_score(y_test, predictions)
+# print(f"Test Accuracy: {accuracy:.3f}")
+
+accuracy_list = []
+loss_list = []
+
+for epoch in range(epochs):
+    for X_batch, y_batch in get_minibatches(X_train, y_train, batch_size):
+        esn.sgd_fit(X_batch, y_batch, all_classes)
+
+    predictions = esn.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions)
+    accuracy_list.append(accuracy)
+    print(f"Epoch {epoch+1}/{epochs}, Test Accuracy: {accuracy:.3f}")
+
+plt.figure()
+plt.plot(accuracy_list, label='Accuracy')
+plt.xlabel('Batch')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
 predictions = esn.predict(X_test)
-accuracy = accuracy_score(y_test, predictions)
-print(f"Test Accuracy: {accuracy:.3f}")
+cm = confusion_matrix(y_test, predictions)
+
+plt.figure(figsize=(10, 7))
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=all_classes, yticklabels=all_classes)
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.title('Confusion Matrix')
+plt.show()
 
 # fig, axes = plt.subplots(2, 5, figsize=(10, 5))
 # for i in range(10):
@@ -165,36 +226,3 @@ print(f"Test Accuracy: {accuracy:.3f}")
 # plt.tight_layout()
 # plt.show()
 
-# results = []
-# for n_res in range(10, 10001,10):
-#     for rnd_state in range(10, 1001):
-#         esn = ESN(
-#             n_inputs=28*28,
-#             n_reservoir=n_res,
-#             n_outputs=1,
-#             spectral_radius=0.95,
-#             sparsity=0.5,
-#             noise=1e-6,
-#             random_state=rnd_state,
-#             alpha=1e-6,
-#             leaking_rate=1.0
-#         )
-#         esn.fit(X_train, y_train, washout=0)
-#         preds = esn.predict(X_test)
-#         acc = accuracy_score(y_test, preds)
-#         print(f"n_reservoir={n_res}, random_state={rnd_state}, accuracy={acc}")
-#         results.append((n_res, rnd_state, acc))
-#
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# n_res_list = [r[0] for r in results]
-# rnd_state_list = [r[1] for r in results]
-# acc_list = [r[2] for r in results]
-# ax.scatter(n_res_list, rnd_state_list, acc_list)
-# ax.set_xlabel('n_reservoir')
-# ax.set_ylabel('random_state')
-# ax.set_zlabel('accuracy')
-# plt.show()
-#
-# df = pd.DataFrame(results, columns=['n_reservoir', 'random_state', 'accuracy'])
-# df.to_csv('results.csv', index=False)
