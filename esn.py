@@ -1,3 +1,4 @@
+import string
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -5,6 +6,7 @@ import seaborn as sns
 from sklearn.linear_model import RidgeClassifier, SGDClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import ConfusionMatrixDisplay
 
 
 class ESN:
@@ -209,14 +211,13 @@ plt.legend()
 plt.show()
 
 predictions = esn.predict(X_test)
-cm = confusion_matrix(y_test, predictions)
-
-plt.figure(figsize=(10, 7))
-sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', xticklabels=all_classes, yticklabels=all_classes)
-plt.xlabel('Predicted')
-plt.ylabel('True')
-plt.title('Confusion Matrix')
-plt.show()
+num_to_char = dict(enumerate(string.ascii_uppercase))
+target_names = [num_to_char[i] for i in all_classes]
+fig, ax = plt.subplots(figsize=(10, 5))
+ConfusionMatrixDisplay.from_predictions(y_test, predictions, ax=ax)
+ax.xaxis.set_ticklabels(target_names)
+ax.yaxis.set_ticklabels(target_names)
+_ = ax.set_title("Confusion Matrix")
 
 # fig, axes = plt.subplots(2, 5, figsize=(10, 5))
 # for i in range(10):
