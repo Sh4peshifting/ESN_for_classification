@@ -195,7 +195,7 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Test Accuracy: {accuracy:.3f}")
 
 plt.figure()
-plt.plot(accuracy_list, label='Accuracy')
+plt.plot(accuracy_list, label='Accuracy', marker='o')
 plt.xlabel('Batch')
 plt.ylabel('Accuracy')
 plt.legend()
