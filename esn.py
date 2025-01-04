@@ -168,19 +168,16 @@ epochs = 100
 batch_size = 100
 all_classes = np.unique(y_test)
 
-leaking_rate = 1.0
-sparsity = 0.5
-spectral_radius = 0.95
 # Initialize ESN
 esn = ESN(n_inputs=28 * 28,
           n_reservoir=2000,
           n_outputs=1,
-          spectral_radius=spectral_radius,
-          sparsity=sparsity,
+          spectral_radius=0.95,
+          sparsity=0.5,
           noise=1e-6,
           random_state=42,
           alpha=1e-6,
-          leaking_rate=leaking_rate)
+          leaking_rate=1.0)
 
 accuracy_list = []
 loss_list = []
@@ -210,6 +207,47 @@ ax.xaxis.set_ticklabels(target_names)
 ax.yaxis.set_ticklabels(target_names)
 _ = ax.set_title("Confusion Matrix")
 plt.show()
+
+# Parameters to test
+leaking_rates = [0.1, 0.3, 0.5, 0.7, 1.0, 1.1, 1.2]
+sparsities = [0.3, 0.5, 0.7, 0.9]
+spectral_radii = [0.75, 0.85, 0.95, 0.97]
+
+# Function to test a single parameter
+def test_parameter(param_name, param_values):
+    accuracy_list = []
+    for value in param_values:
+        if param_name == 'leaking_rate':
+            esn = ESN(n_inputs=28 * 28, n_reservoir=2000, n_outputs=1,
+                      spectral_radius=0.95, sparsity=0.5, noise=1e-6,
+                      random_state=42, alpha=1e-6, leaking_rate=value)
+        elif param_name == 'sparsity':
+            esn = ESN(n_inputs=28 * 28, n_reservoir=2000, n_outputs=1,
+                      spectral_radius=0.95, sparsity=value, noise=1e-6,
+                      random_state=42, alpha=1e-6, leaking_rate=1.0)
+        elif param_name == 'spectral_radius':
+            esn = ESN(n_inputs=28 * 28, n_reservoir=2000, n_outputs=1,
+                      spectral_radius=value, sparsity=0.5, noise=1e-6,
+                      random_state=42, alpha=1e-6, leaking_rate=1.0)
+        
+        esn.fit(X_train, y_train)
+        predictions = esn.predict(X_test)
+        accuracy = accuracy_score(y_test, predictions)
+        accuracy_list.append(accuracy)
+        print(f"{param_name}={value}, Test Accuracy: {accuracy:.3f}")
+    
+    plt.figure()
+    plt.plot(param_values, accuracy_list, label=f'{param_name} Accuracy', marker='o')
+    plt.xlabel(param_name)
+    plt.ylabel('Accuracy')
+    plt.title(f'Accuracy vs {param_name}')
+    plt.legend()
+    plt.show()
+
+# Test each parameter
+test_parameter('leaking_rate', leaking_rates)
+test_parameter('sparsity', sparsities)
+test_parameter('spectral_radius', spectral_radii)
 
 # fig, axes = plt.subplots(2, 5, figsize=(10, 5))
 # for i in range(10):
