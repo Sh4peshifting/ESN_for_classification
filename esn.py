@@ -164,7 +164,7 @@ def get_minibatches(X, y, batch_size):
 X, y = load_csv('American_Sign_Language_Recognition.csv')
 X_train, X_test, y_train, y_test = train_test_split(X, y, train_size=0.8, random_state=42)
 
-epochs = 100
+epochs = 50
 batch_size = 100
 all_classes = np.unique(y_test)
 
@@ -209,9 +209,9 @@ _ = ax.set_title("Confusion Matrix")
 plt.show()
 
 # Parameters to test
-leaking_rates = [0.1, 0.3, 0.5, 0.7, 1.0, 1.1, 1.2]
-sparsities = [0.3, 0.5, 0.7, 0.9]
-spectral_radii = [0.75, 0.85, 0.95, 0.97]
+leaking_rates = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2]
+sparsities = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+spectral_radii = [0.35, 0.45, 0.55, 0.65, 0.75, 0.85, 0.95, 0.97]
 
 # Function to test a single parameter
 def test_parameter(param_name, param_values):
@@ -229,6 +229,10 @@ def test_parameter(param_name, param_values):
             esn = ESN(n_inputs=28 * 28, n_reservoir=2000, n_outputs=1,
                       spectral_radius=value, sparsity=0.5, noise=1e-6,
                       random_state=42, alpha=1e-6, leaking_rate=1.0)
+        elif param_name == 'reservoir_size':
+            esn = ESN(n_inputs=28 * 28, n_reservoir=value, n_outputs=1,
+                      spectral_radius=0.95, sparsity=0.5, noise=1e-6,
+                      random_state=42, alpha=1e-6, leaking_rate=1.0)
         
         esn.fit(X_train, y_train)
         predictions = esn.predict(X_test)
@@ -242,12 +246,17 @@ def test_parameter(param_name, param_values):
     plt.ylabel('Accuracy')
     plt.title(f'Accuracy vs {param_name}')
     plt.legend()
+    plt.grid(True)
     plt.show()
 
+
+reservoir_sizes = list(range(100, 2100, 100))
+
 # Test each parameter
-test_parameter('leaking_rate', leaking_rates)
-test_parameter('sparsity', sparsities)
-test_parameter('spectral_radius', spectral_radii)
+# test_parameter('leaking_rate', leaking_rates)
+# test_parameter('sparsity', sparsities)
+# test_parameter('spectral_radius', spectral_radii)
+# test_parameter('reservoir_size', reservoir_sizes)
 
 # fig, axes = plt.subplots(2, 5, figsize=(10, 5))
 # for i in range(10):
